@@ -1,0 +1,210 @@
+---
+title: "ANCOVA"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+#| eval: false
+
+install.packages("hypr")
+install.packages("readr")
+install.packages("broom")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("forcats")
+install.packages("interactions")
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+library(hypr)
+library(dplyr)
+library(readr)
+library(broom)
+library(forcats)
+library(interactions)
+```
+
+Continuamos con los distintos modelos que podemos estimar utilizando nuestro esquema básico:
+
+$$
+\text{DATOS} = \text{MODELO} + \text{ERROR}
+$$
+
+En la clase anterior, vimos un modelo con predictores categóricos denominado ANOVA factorial, al cual agregamos una interacción. Ahora veremos un modelo similar en el que se utilizan tanto predictores categóricos como continuos; adicionalmente añadiremos una interacción. A estos modelos que combinan predictores categóricos y continuos se les llama **Análisis de covarianza** (ANCOVA).
+
+$$
+Y_i = \beta_0 + \beta_1X_{1i} + \beta_2X_{2i} + \beta_3X_{3i} + \beta_4X_{2i}X_{3i} + \varepsilon_i
+$$
+
+Vamos a ver el mismo ejemplo del libro (p. 230) para familiarizarnos con el ANCOVA.
+
+```{r}
+
+experiment <- read_table("curriculum.txt")
+```
+
+Vamos a convertir `curriculum` y `teacher` en variables tipo `factor`.
+
+```{r}
+
+experiment <- experiment |>
+  mutate(
+    curriculum = fct(curriculum, levels = c("old", "new")),
+    teacher = fct(teacher, levels = c("A", "B")))
+```
+
+Ahora vamos a asignar los contrastes de interés a los factores.
+
+```{r}
+
+contrasts(experiment$curriculum) <- contr.hypothesis(
+  
+  OvsN = old ~ new,
+  
+  levels = c("old", "new"))
+
+
+contrasts(experiment$teacher) <- contr.hypothesis(
+  
+  AvsB = A ~ B,
+  
+  levels = c("A", "B"))
+```
+
+Veamos las medias en `score` y en `pretest` de los 4 grupos definidos por ambos factores.
+
+```{r}
+
+medias <- experiment |>
+  summarise(
+    .by = c(curriculum, teacher),
+    n = n(),
+    meanPretest = mean(pretest),
+    meanPostest = mean(postest))
+
+medias
+```
+
+Nótese como las medias en el pretest son iguales, es decir, los 4 grupos tienen un mismo nivel de conocimientos antes de que se aplique la intervención. Esto implica que el `pretest` no se asocia con `curriculum` ni con `teacher`, es decir, los factores no tienen ninguna capacidad predictiva sobre el pretest.
+
+```{r}
+
+lm(pretest ~ curriculum*teacher, data = experiment) |>
+  cat_plot(pred = "curriculum", modx = "teacher", interval = F, plot.points = T)
+
+lm(pretest ~ curriculum*teacher, data = experiment) |>
+  cat_plot(pred = "teacher", modx = "curriculum", interval = F, plot.points = T)
+```
+
+Antes de estimar el ANCOVA, veamos los resultados de un ANOVA factorial, es decir, sin la inclusión de `pretest`.
+
+```{r}
+
+modeloC1 <- lm(
+  postest ~ 1 + curriculum + teacher, data = experiment)
+
+modeloA1 <- lm(
+  postest ~ 1 + curriculum + teacher + curriculum*teacher, data = experiment)
+```
+
+Comparemos ambos modelos para determinar si la interacción reduce significativamente el error.
+
+```{r}
+
+anova(modeloC1, modeloA1)
+```
+
+Estos resultados nos indican que la interacción es innecesaria, por lo cual podríamos decir que el efecto del `curriculum` sobre el postest es independiente del factor `teacher`, y viceversa.
+
+Veamos los coeficientes del modelo A1.
+
+```{r}
+
+tidy(modeloA1, conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+Nótese que la interacción no es estadísticamente significativa, es decir, su intervalo de confianza incluye el 0 como un valor plausible.
+
+Veamos un gráfico para entender mejor las diferencias de medias.
+
+```{r}
+
+cat_plot(modeloA1, pred = "teacher", modx = "curriculum")
+```
+
+Aunque la interacción no es estadísticamente significativa, sí se aprecia que la diferencia de medias entre el progama viejo y el programa nuevo es menor para la maestra A que para el maestro B.
+
+Veamos los resultados al incluir la covariable. Es importante que el pretest correlacione con el postest, de lo contrario, su inclusión sería irrelevante.
+
+```{r}
+
+with(experiment, plot(pretest, postest))
+abline(lm(postest ~ pretest, data = experiment))
+```
+
+```{r}
+
+modeloC2 <- lm(
+  postest ~ 1 + pretest + curriculum + teacher, data = experiment)
+
+modeloA2 <- lm(
+  postest ~ 1 + pretest + curriculum + teacher + curriculum*teacher, data = experiment)
+```
+
+Comparemos nuevamente ambos modelos para ver si la interacción reduce el error significativamente, controlando por `pretest`.
+
+```{r}
+
+anova(modeloC2, modeloA2)
+```
+
+Ahora la suma de errores cuadráticos (columna `rss`) son significativamente diferentes, lo cual no sucedió en el ANOVA factorial (sin covariable).
+
+Ahora vemos los coeficientes del modelo A.
+
+```{r}
+
+tidy(modeloA2, conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+Los coeficientes del modelo A2 son iguales a los del modelo A1. Por lo tanto, la inclusión de la covariable (cuando **no se asocia a los factores**) no modifica las estimaciones, pero sí reduce el error de predicción (cuando **se asocia a la variable de respuesta**). Nótese cómo ahora la interacción sí es estadísticamente significativa, es decir, excluye el 0 como valor plausible.
+
+```{r}
+
+cat_plot(modeloA2, pred = "teacher", modx = "curriculum")
+```
+
+En este gráfico se aprecia que los intervalos de confianza se han reducido, es decir, el modelo con la covariable tiene mayor precisión.
+
+Un aspecto que debe considerarse es que el modelo A2 excluye las interacciones `pretest:curriculum` y `pretest:teacher`. En otras palabras, se asume que la relación entre `pretest` y `postest` es igual para los 4 grupos definidos por los factores `teacher` y `curriculum`. A este supuesto se le conoce como **homogeneidad de las pendientes de regresión**.
+
+```{r}
+
+modeloA3 <- lm(
+  postest ~ 1 + pretest + curriculum + teacher + curriculum*teacher +
+    pretest*curriculum + pretest*teacher + pretest*curriculum*teacher, data = experiment)
+
+anova(modeloA2, modeloA3)
+```
+
+Si el modelo A3 hubiera reducido significativamente el error, se habría violado el supuesto de homogeneidad de las pendientes de regresión. En ese escenario, sería necesario interpretar los coeficientes del modelo tomando en cuenta que la relación entre el pretest y el postest es diferente para los distintos niveles `curriculum` y `teacher`.
+
+```{r}
+
+interact_plot(
+  modeloA3, 
+  pred = "pretest", 
+  modx = "teacher", 
+  mod2 = "curriculum", 
+  interval = T)
+```

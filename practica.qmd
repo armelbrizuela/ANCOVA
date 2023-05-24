@@ -1,0 +1,177 @@
+---
+title: "Práctica de ANCOVA"
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+Estos paquetes deben estar instalados:
+
+```{r, eval=FALSE}
+
+install.packages("hypr")
+install.packages("dplyr")
+install.packages("broom")
+install.packages("haven")
+install.packages("forcats")
+```
+
+Active los siguientes paquetes.
+
+```{r, warning = FALSE, message = FALSE}
+
+library(hypr)
+library(dplyr)
+library(broom)
+library(haven)
+library(forcats)
+```
+
+Lea el archivo **MBPM_Data_RCT.sav** con `read_sav()` y elimine las etiquetas del SPSS con `zap_labels()`.
+
+```{r}
+
+mindfulnes <- read_sav() |>
+  zap_labels()
+```
+
+Seleccione las columnas **LIintenpost**, **Group**, **LIintenpre** y **Education** y las guarda en un objeto llamado `mindfulnes`.
+
+```{r}
+
+mindfulnes <- 
+```
+
+Con `summarise()` y `n()` muestre cuántas personas fueron asignadas a cada grupo (`Group`).
+
+```{r}
+
+mindfulnes |>
+  summarise(.by = , n = n())
+```
+
+Con `summarise()` y `n()` muestre cuántas personas pertencen a cada nivel educativo (`Education`).
+
+```{r}
+
+mindfulnes |>
+  summarise(.by = , n = n())
+```
+
+Convierta en variables `character` las columnas `Group` y `Education`.
+
+```{r}
+
+mindfulnes <- mindfulnes |>
+  mutate(
+    Group = as.character(),
+    Education = as.character())
+```
+
+Convierta en variables tipo `factor` las columnas `Group` y `Education`.
+
+```{r}
+
+mindfulnes <- mindfulnes |>
+  mutate(
+    Group = fct(),
+    Education = fct())
+```
+
+Recodifique los factores `Group` y `Education` para que sus niveles sean `"Exp" = "1", "Ctr" = "2"` en el caso de `Group` y `"prim" = "1", "sec" = "2", "prof" = "3", "uni" = "4"` en el caso de `Education`.
+
+```{r}
+
+mindfulnes <- mindfulnes |>
+  mutate(
+    Group = fct_recode(),
+    Education = fct_recode())
+```
+
+Con `summarise()` y `mean()` muestre las medias en el pretest y en el postest para los 8 grupos creados a partir de los factores.
+
+```{r}
+
+medias <- mindfulnes |>
+  summarise(
+    .by = c( , ),
+    meanLIintenpre = mean(),
+    meanLIintenpost = mean( , na.rm = T))
+
+medias
+```
+
+Verifique si la covariable está asociada a los factores.
+
+```{r}
+
+lm( ~ , data = mindfulnes) |>
+  cat_plot(pred = "Group", modx = "Education")
+
+lm( ~ , data = mindfulnes) |>
+  cat_plot(pred = "Education", modx = "Group")
+  
+```
+
+Verifique si la covariable está asociada a la variable de respuesta.
+
+```{r}
+
+with(mindfulnes, plot())
+abline(lm( ~ , data = mindfulnes))
+```
+
+Genere contrastes de medias para `Group` y para `Education`.
+
+```{r}
+
+contrasts(mindfulnes$Group) <- contr.hypothesis(
+  
+  levels = c("Exp", "Ctr"))
+
+
+contrasts(mindfulnes$Education) <- contr.hypothesis(
+  
+  levels = c("prim", "sec", "prof", "uni"))
+```
+
+Estime un modelo C y un modelo A1. El modelo A1 incluye los mismos predictores que el modelo C, pero agrega una interacción.
+
+```{r}
+
+modeloC <- lm( ~  , data = mindfulnes)
+
+modeloA1 <- lm( ~ , data = mindfulnes)
+```
+
+Compare los modelos C y A1. Verifique si el modelo A1 reduce significativamente el error.
+
+```{r}
+
+anova()
+```
+
+Muestre las diferencias de medias (coeficientes estimados) del modelo C.
+
+```{r}
+
+tidy(  , conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+Verifique si se cumple el supuesto de homogeneidad de las pendientes. Para ello, debe estimar un modelo A2 y luego compararlo con el modelo C.
+
+```{r}
+
+modeloA2 <- lm( ~ , data = mindfulnes)
+
+anova()
+```
+
+Muestre un gráfico de interacción del modelo A2 con la función `interact_plot()`.
+
+```{r}
+
+interact_plot( , pred = " ", modx = " ", mod2 = " ", interval = T)
+```
