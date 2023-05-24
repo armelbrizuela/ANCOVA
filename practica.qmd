@@ -14,6 +14,7 @@ install.packages("dplyr")
 install.packages("broom")
 install.packages("haven")
 install.packages("forcats")
+install.packages("interactions")
 ```
 
 Active los siguientes paquetes.
@@ -25,6 +26,7 @@ library(dplyr)
 library(broom)
 library(haven)
 library(forcats)
+library(interactions)
 ```
 
 Lea el archivo **MBPM_Data_RCT.sav** con `read_sav()` y elimine las etiquetas del SPSS con `zap_labels()`.
