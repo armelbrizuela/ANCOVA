@@ -8,8 +8,7 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r}
-#| eval: false
+```{r, eval=FALSE}
 
 install.packages("hypr")
 install.packages("readr")
@@ -20,7 +19,7 @@ install.packages("forcats")
 install.packages("interactions")
 ```
 
-```{r, warning = FALSE, message = FALSE}
+```{r}
 
 library(hypr)
 library(dplyr)
@@ -82,10 +81,9 @@ Veamos las medias en `score` y en `pretest` de los 4 grupos definidos por ambos 
 ```{r}
 
 medias <- experiment |>
-  summarise(
-    .by = c(curriculum, teacher),
-    n = n(),
-    meanPretest = mean(pretest),
+  summarise(.by = c(curriculum, teacher),
+    n = n(), 
+    meanPretest = mean(pretest), 
     meanPostest = mean(postest))
 
 medias
@@ -97,9 +95,6 @@ Nótese como las medias en el pretest son iguales, es decir, los 4 grupos tienen
 
 lm(pretest ~ curriculum*teacher, data = experiment) |>
   cat_plot(pred = "curriculum", modx = "teacher", interval = F, plot.points = T)
-
-lm(pretest ~ curriculum*teacher, data = experiment) |>
-  cat_plot(pred = "teacher", modx = "curriculum", interval = F, plot.points = T)
 ```
 
 Antes de estimar el ANCOVA, veamos los resultados de un ANOVA factorial, es decir, sin la inclusión de `pretest`.
@@ -168,7 +163,7 @@ anova(modeloC2, modeloA2)
 
 Ahora la suma de errores cuadráticos (columna `rss`) son significativamente diferentes, lo cual no sucedió en el ANOVA factorial (sin covariable).
 
-Ahora vemos los coeficientes del modelo A.
+Ahora vemos los coeficientes del modelo A2.
 
 ```{r}
 
@@ -177,14 +172,15 @@ tidy(modeloA2, conf.int = T) |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 ```
 
-Los coeficientes del modelo A2 son iguales a los del modelo A1. Por lo tanto, la inclusión de la covariable (cuando **no se asocia a los factores**) no modifica las estimaciones, pero sí reduce el error de predicción (cuando **se asocia a la variable de respuesta**). Nótese cómo ahora la interacción sí es estadísticamente significativa, es decir, excluye el 0 como valor plausible.
+Los coeficientes de `curriculumnew`, `teacherB` y `curriculumnew:teacherB` son iguales en los modelos A1 y A2. Por lo tanto, la inclusión de la covariable (cuando **no se asocia a los factores**) no modifica las estimaciones, pero sí reduce el error de predicción (cuando **se asocia a la variable de respuesta**). Nótese cómo ahora la interacción sí es estadísticamente significativa, es decir, excluye el 0 como valor plausible.
 
 ```{r}
 
+cat_plot(modeloA1, pred = "teacher", modx = "curriculum")
 cat_plot(modeloA2, pred = "teacher", modx = "curriculum")
 ```
 
-En este gráfico se aprecia que los intervalos de confianza se han reducido, es decir, el modelo con la covariable tiene mayor precisión.
+En este gráfico se aprecia que las medias son iguales, pero los intervalos de confianza se han reducido, es decir, el modelo A2 con la covariable tiene mayor precisión (menor incertidumbre) en la estimación de los parámetros.
 
 Un aspecto que debe considerarse es que el modelo A2 excluye las interacciones `pretest:curriculum` y `pretest:teacher`. En otras palabras, se asume que la relación entre `pretest` y `postest` es igual para los 4 grupos definidos por los factores `teacher` y `curriculum`. A este supuesto se le conoce como **homogeneidad de las pendientes de regresión**.
 
