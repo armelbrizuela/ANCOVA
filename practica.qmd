@@ -7,8 +7,8 @@ editor_options:
 
 Estos paquetes deben estar instalados:
 
-```{r, eval=FALSE}
-
+```{r}
+#| eval: false
 install.packages("hypr")
 install.packages("dplyr")
 install.packages("broom")
@@ -19,7 +19,7 @@ install.packages("interactions")
 
 Active los siguientes paquetes.
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 
 library(hypr)
 library(dplyr)
@@ -29,29 +29,20 @@ library(forcats)
 library(interactions)
 ```
 
-Pérez-Fernández, Salaberria y Ruiz de Ocenda (2022) afirman lo siguiente en el abstract de su publicación: Several studies have shown the effectiveness of psychological therapies in the treatment of chronic pain, including mindfulness-based therapies. In this regard, mindfulness-based pain management (MBPM) has evidenced significant positive changes in patients with chronic pain, but so far, no RCT study has been conducted. Therefore, the main purpose of this study is to explore the results of the MBPM program with chronic pain patients.
-
 Lea el archivo **MBPM_Data_RCT.sav** con `read_sav()` y elimine las etiquetas del SPSS con `zap_labels()`.
 
 ```{r}
 
-mindfulnes <- read_sav() |>
+mindfulnes <- read_sav("MBPM_Data_RCT.sav") |>
   zap_labels()
 ```
 
 Seleccione las columnas `LIglobalpre`, `Education`, `Group` y `LIglobalpost` y las guarda en un objeto llamado `mindfulnes`.
 
-1.  `LIglobalpre`: Lattinen Index (LI), *The higher the score, the worse the assessment of the pain* (Pérez-Fernández, Salaberria y Ruiz de Ocenda, 2022, p. 3158).
-
-2.  `Education`: Nivel educativo (Primary, Secondary, Profess. trainin y University studies)
-
-3.  `Group`: Grupo (Experimental y Control). Con respecto al grupo experimental, Pérez-Fernández, Salaberria y Ruiz de Ocenda (2022, p. 3155) afirman lo siguiente: *The MBPM program consists of group sessions of two and a half hours (20 training hours in total), held weekly for eight weeks. The program focuses on training in awareness of physical, cognitive, and emotional sensations, attentional processes to become an observer of one's thoughts and emotions, and non-judgmental acceptance, intending to provide greater flexibility to patients to manage pain.*
-
-4.  `LIglobalpost`: Lattinen Index (LI), *The higher the score, the worse the assessment of the pain* (Pérez-Fernández, Salaberria y Ruiz de Ocenda, 2022, p. 3158).
-
 ```{r}
 
-mindfulnes <- 
+mindfulnes <- mindfulnes |>
+  select(LIglobalpost, Group, LIglobalpre, Education)
 ```
 
 Con `summarise()` y `n()` muestre cuántas personas fueron asignadas a cada grupo (`Group`).
@@ -59,7 +50,7 @@ Con `summarise()` y `n()` muestre cuántas personas fueron asignadas a cada grup
 ```{r}
 
 mindfulnes |>
-  summarise(.by = , n = n())
+  summarise(.by = Group, n = n())
 ```
 
 Con `summarise()` y `n()` muestre cuántas personas pertencen a cada nivel educativo (`Education`).
@@ -67,17 +58,17 @@ Con `summarise()` y `n()` muestre cuántas personas pertencen a cada nivel educa
 ```{r}
 
 mindfulnes |>
-  summarise(.by = , n = n())
+  summarise(.by = Education, n = n())
 ```
 
-Convierta en variables `character` las columnas `Group` y `Education`.
+Convierta en variables tipo `character` las columnas `Group` y `Education`.
 
 ```{r}
 
 mindfulnes <- mindfulnes |>
   mutate(
-    Group = as.character(),
-    Education = as.character())
+    Group = as.character(Group),
+    Education = as.character(Education))
 ```
 
 Convierta en variables tipo `factor` las columnas `Group` y `Education`.
@@ -86,8 +77,8 @@ Convierta en variables tipo `factor` las columnas `Group` y `Education`.
 
 mindfulnes <- mindfulnes |>
   mutate(
-    Group = fct(),
-    Education = fct())
+    Group = fct(Group, levels = c("1", "2")),
+    Education = fct(Education, levels = c("1", "2", "3", "4")))
 ```
 
 Recodifique los factores `Group` y `Education` para que sus niveles sean `"Exp" = "1", "Ctr" = "2"` en el caso de `Group` y `"prim" = "1", "sec" = "2", "prof" = "3", "uni" = "4"` en el caso de `Education`.
@@ -96,8 +87,8 @@ Recodifique los factores `Group` y `Education` para que sus niveles sean `"Exp" 
 
 mindfulnes <- mindfulnes |>
   mutate(
-    Group = fct_recode(),
-    Education = fct_recode())
+    Group = fct_recode(Group, "Exp" = "1", "Ctr" = "2"),
+    Education = fct_recode(Education, "prim" = "1", "sec" = "2", "prof" = "3", "uni" = "4"))
 ```
 
 Con `summarise()` y `mean()` muestre las medias en el pretest y en el postest para los 8 grupos creados a partir de los factores.
@@ -106,9 +97,10 @@ Con `summarise()` y `mean()` muestre las medias en el pretest y en el postest pa
 
 medias <- mindfulnes |>
   summarise(
-    .by = c( , ),
-    meanLIglobalpre = mean(),
-    meanLIglobalpost = mean( , na.rm = T))
+    .by = c(Group, Education),
+    n = n(),
+    meanLIglobalpre = mean(LIglobalpre),
+    meanLIglobalpost = mean(LIglobalpost, na.rm = T))
 
 medias
 ```
@@ -117,16 +109,17 @@ Verifique si la covariable está asociada a los factores.
 
 ```{r}
 
-lm( ~ , data = mindfulnes) |>
+lm(LIglobalpre ~ Group*Education, data = mindfulnes) |>
   cat_plot(pred = "Education", modx = "Group")
+  
 ```
 
 Verifique si la covariable está asociada a la variable de respuesta.
 
 ```{r}
 
-with(mindfulnes, plot())
-abline(lm( ~ , data = mindfulnes))
+with(mindfulnes, plot(LIglobalpre, LIglobalpost))
+abline(lm(LIglobalpost ~ LIglobalpre, data = mindfulnes))
 ```
 
 Genere contrastes de medias para `Group` y para `Education`.
@@ -135,10 +128,15 @@ Genere contrastes de medias para `Group` y para `Education`.
 
 contrasts(mindfulnes$Group) <- contr.hypothesis(
   
+  CvsE = Exp ~ Ctr,
+  
   levels = c("Exp", "Ctr"))
 
 
 contrasts(mindfulnes$Education) <- contr.hypothesis(
+  
+  primVSsec = prim ~ sec,
+  profVSuni = prof ~ uni,
   
   levels = c("prim", "sec", "prof", "uni"))
 ```
@@ -147,23 +145,25 @@ Estime un modelo C y un modelo A1. El modelo A1 incluye los mismos predictores q
 
 ```{r}
 
-modeloC <- lm( ~  , data = mindfulnes)
+modeloC <- lm(
+  LIglobalpost ~ 1 + LIglobalpre + Group + Education, data = mindfulnes)
 
-modeloA1 <- lm( ~ , data = mindfulnes)
+modeloA1 <- lm(
+  LIglobalpost ~ 1 + LIglobalpre + Group + Education + Group*Education, data = mindfulnes)
 ```
 
 Compare los modelos C y A1. Verifique si el modelo A1 reduce significativamente el error.
 
 ```{r}
 
-anova()
+anova(modeloC, modeloA1)
 ```
 
 Muestre las diferencias de medias (coeficientes estimados) del modelo C.
 
 ```{r}
 
-tidy(  , conf.int = T) |>
+tidy(modeloC, conf.int = T) |>
   select(term, estimate, conf.low, conf.high, p.value) |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 ```
@@ -172,18 +172,21 @@ Verifique si se cumple el supuesto de homogeneidad de las pendientes. Para ello,
 
 ```{r}
 
-modeloA2 <- lm( ~ , data = mindfulnes)
+modeloA2 <- lm(
+  LIglobalpost ~ 1 + LIglobalpre + Group + Education +
+    LIglobalpre*Group + LIglobalpre*Education + LIglobalpre*Group*Education, data = mindfulnes)
 
-anova()
+anova(modeloC, modeloA2)
 ```
 
 Muestre un gráfico de interacción del modelo A2 con la función `interact_plot()`.
 
 ```{r}
 
-interact_plot( , pred = " ", modx = " ", mod2 = " ", interval = T)
+interact_plot(
+  modeloA2, 
+  pred = "LIglobalpre",
+  modx = "Education",
+  mod2 = "Group",
+  interval = T)
 ```
-
-# Referencia
-
-Pérez-Fernández, J. I., Salaberria, K., & Ruiz de Ocenda, Á. (2022). Mindfulness-Based Pain Management (MBPM) for Chronic Pain: a Randomized Clinical Trial. *Mindfulness*, 1-13.
