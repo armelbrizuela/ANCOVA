@@ -19,7 +19,7 @@ install.packages("interactions")
 
 Active los siguientes paquetes.
 
-```{r, warning = FALSE, message = FALSE}
+```{r}
 
 library(hypr)
 library(dplyr)
@@ -29,6 +29,8 @@ library(forcats)
 library(interactions)
 ```
 
+Pérez-Fernández, Salaberria y Ruiz de Ocenda (2022) afirman lo siguiente en el abstract de su publicación: Several studies have shown the effectiveness of psychological therapies in the treatment of chronic pain, including mindfulness-based therapies. In this regard, mindfulness-based pain management (MBPM) has evidenced significant positive changes in patients with chronic pain, but so far, no RCT study has been conducted. Therefore, the main purpose of this study is to explore the results of the MBPM program with chronic pain patients.
+
 Lea el archivo **MBPM_Data_RCT.sav** con `read_sav()` y elimine las etiquetas del SPSS con `zap_labels()`.
 
 ```{r}
@@ -37,7 +39,15 @@ mindfulnes <- read_sav() |>
   zap_labels()
 ```
 
-Seleccione las columnas **LIintenpost**, **Group**, **LIintenpre** y **Education** y las guarda en un objeto llamado `mindfulnes`.
+Seleccione las columnas `LIglobalpre`, `Education`, `Group` y `LIglobalpost` y las guarda en un objeto llamado `mindfulnes`.
+
+1.  `LIglobalpre`: Lattinen Index (LI), *The higher the score, the worse the assessment of the pain* (Pérez-Fernández, Salaberria y Ruiz de Ocenda, 2022, p. 3158).
+
+2.  `Education`: Nivel educativo (Primary, Secondary, Profess. trainin y University studies)
+
+3.  `Group`: Grupo (Experimental y Control). Con respecto al grupo experimental, Pérez-Fernández, Salaberria y Ruiz de Ocenda (2022, p. 3155) afirman lo siguiente: *The MBPM program consists of group sessions of two and a half hours (20 training hours in total), held weekly for eight weeks. The program focuses on training in awareness of physical, cognitive, and emotional sensations, attentional processes to become an observer of one's thoughts and emotions, and non-judgmental acceptance, intending to provide greater flexibility to patients to manage pain.*
+
+4.  `LIglobalpost`: Lattinen Index (LI), *The higher the score, the worse the assessment of the pain* (Pérez-Fernández, Salaberria y Ruiz de Ocenda, 2022, p. 3158).
 
 ```{r}
 
@@ -97,8 +107,8 @@ Con `summarise()` y `mean()` muestre las medias en el pretest y en el postest pa
 medias <- mindfulnes |>
   summarise(
     .by = c( , ),
-    meanLIintenpre = mean(),
-    meanLIintenpost = mean( , na.rm = T))
+    meanLIglobalpre = mean(),
+    meanLIglobalpost = mean( , na.rm = T))
 
 medias
 ```
@@ -108,11 +118,7 @@ Verifique si la covariable está asociada a los factores.
 ```{r}
 
 lm( ~ , data = mindfulnes) |>
-  cat_plot(pred = "Group", modx = "Education")
-
-lm( ~ , data = mindfulnes) |>
   cat_plot(pred = "Education", modx = "Group")
-  
 ```
 
 Verifique si la covariable está asociada a la variable de respuesta.
@@ -177,3 +183,7 @@ Muestre un gráfico de interacción del modelo A2 con la función `interact_plot
 
 interact_plot( , pred = " ", modx = " ", mod2 = " ", interval = T)
 ```
+
+# Referencia
+
+Pérez-Fernández, J. I., Salaberria, K., & Ruiz de Ocenda, Á. (2022). Mindfulness-Based Pain Management (MBPM) for Chronic Pain: a Randomized Clinical Trial. *Mindfulness*, 1-13.
